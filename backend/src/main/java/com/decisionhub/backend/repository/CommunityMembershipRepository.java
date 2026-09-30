@@ -10,4 +10,6 @@ public interface CommunityMembershipRepository
         extends JpaRepository<CommunityMemberShip, Long> {
 
     List<CommunityMemberShip> findByUser(User user);
+
+    long countByUserAndLeftAtIsNull(User user);
 }

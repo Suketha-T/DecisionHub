@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import { useTheme } from "../context/ThemeContext";
 import Toast from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const API = "http://localhost:8080";
 
@@ -14,6 +15,12 @@ function AdminDecisions() {
   const [expandedId, setExpandedId] = useState(null);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
 
   const [comments, setComments] = useState({});
   const [commentsLoading, setCommentsLoading] = useState({});
@@ -70,10 +77,10 @@ function AdminDecisions() {
 
     try {
       const response = await fetch(
-        `${API}/api/decisions/${decisionId}/comments`,
-        {
-          headers: headers(),
-        }
+          `${API}/api/decisions/${decisionId}/comments`,
+          {
+            headers: headers(),
+          }
       );
 
       if (!response.ok) {
@@ -110,12 +117,6 @@ function AdminDecisions() {
   };
 
   const deleteDecision = async (id, title) => {
-    const confirmed = window.confirm(
-      `Delete "${title}"? This will also remove its options, votes, and comments.`
-    );
-
-    if (!confirmed) return;
-
     try {
       const response = await fetch(`${API}/api/admin/decisions/${id}`, {
         method: "DELETE",
@@ -131,7 +132,7 @@ function AdminDecisions() {
       notify("Decision deleted.");
 
       setDecisions((current) =>
-        current.filter((d) => d.id !== id)
+          current.filter((d) => d.id !== id)
       );
 
       if (expandedId === id) {
@@ -143,24 +144,20 @@ function AdminDecisions() {
   };
 
   const deleteComment = async (decisionId, commentId) => {
-    const confirmed = window.confirm("Delete this comment?");
-
-    if (!confirmed) return;
-
     try {
       const response = await fetch(
-        `${API}/api/admin/comments/${commentId}`,
-        {
-          method: "DELETE",
-          headers: headers(),
-        }
+          `${API}/api/admin/comments/${commentId}`,
+          {
+            method: "DELETE",
+            headers: headers(),
+          }
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Unable to delete comment."
+            data.message || "Unable to delete comment."
         );
       }
 
@@ -169,12 +166,39 @@ function AdminDecisions() {
       setComments((current) => ({
         ...current,
         [decisionId]: (current[decisionId] || []).filter(
-          (c) => c.id !== commentId
+            (c) => c.id !== commentId
         ),
       }));
     } catch (err) {
       notify(err.message, true);
     }
+  };
+
+  const askDeleteDecision = (id, title) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Decision",
+      message: `Delete "${title}"? This will also remove its options, votes, and comments.`,
+      onConfirm: () => deleteDecision(id, title),
+    });
+  };
+
+  const askDeleteComment = (decisionId, commentId) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Comment",
+      message: "Are you sure you want to delete this comment?",
+      onConfirm: () => deleteComment(decisionId, commentId),
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      title: "",
+      message: "",
+      onConfirm: null,
+    });
   };
 
   const filteredDecisions = decisions.filter((d) => {
@@ -183,9 +207,9 @@ function AdminDecisions() {
     if (!term) return true;
 
     return (
-      d.title?.toLowerCase().includes(term) ||
-      d.category?.toLowerCase().includes(term) ||
-      d.createdByName?.toLowerCase().includes(term)
+        d.title?.toLowerCase().includes(term) ||
+        d.category?.toLowerCase().includes(term) ||
+        d.createdByName?.toLowerCase().includes(term)
     );
   });
 
@@ -198,28 +222,28 @@ function AdminDecisions() {
     const loadingComments = commentsLoading[decision.id];
 
     return (
-      <div className="admin-details-panel">
-        {/* OPTIONS */}
-        <div className="admin-panel-section-title">
-          Options
-        </div>
+        <div className="admin-details-panel">
+          {/* OPTIONS */}
+          <div className="admin-panel-section-title">
+            Options
+          </div>
 
-        {decision.options?.length ? (
-          <div className="admin-options-list">
-            {decision.options.map((option, optionIndex) => (
-              <div
-                className="admin-option-row"
-                key={option.id}
-              >
+          {decision.options?.length ? (
+              <div className="admin-options-list">
+                {decision.options.map((option, optionIndex) => (
+                    <div
+                        className="admin-option-row"
+                        key={option.id}
+                    >
                 <span className="admin-option-rank">
                   {String(optionIndex + 1).padStart(2, "0")}
                 </span>
 
-                <span className="admin-option-text">
+                      <span className="admin-option-text">
                   {option.optionText}
                 </span>
 
-                <span className="admin-option-votes">
+                      <span className="admin-option-votes">
                   <span className="admin-option-votes-number">
                     {option.voteCount || 0}
                   </span>
@@ -227,85 +251,98 @@ function AdminDecisions() {
                     {Number(option.voteCount) === 1 ? "vote" : "votes"}
                   </span>
                 </span>
+                    </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="admin-empty">
-            No options on this decision.
-          </div>
-        )}
-
-        {/* COMMENTS */}
-        <div className="admin-panel-section-title">
-          Comments
-        </div>
-
-        {loadingComments && (
-          <div className="admin-empty">
-            Loading comments…
-          </div>
-        )}
-
-        {!loadingComments &&
-          decisionComments.length === 0 && (
-            <div className="admin-empty">
-              No comments on this decision.
-            </div>
+          ) : (
+              <div className="admin-empty">
+                No options on this decision.
+              </div>
           )}
 
-        {!loadingComments &&
-          decisionComments.length > 0 && (
-            <div className="admin-comments-list">
-              {decisionComments.map((comment) => (
-                <div
-                  className="admin-comment-row"
-                  key={comment.id}
-                >
-                  <div className="admin-comment-content">
-                    <div className="admin-comment-body">
-                      {comment.content}
-                    </div>
+          {/* COMMENTS */}
+          <div className="admin-panel-section-title">
+            Comments
+          </div>
 
-                    <div className="admin-comment-meta">
-                      {comment.userName || "Unknown user"}
+          {loadingComments && (
+              <div className="admin-empty">
+                Loading comments…
+              </div>
+          )}
 
-                      {comment.createdAt &&
-                        ` · ${new Date(
-                          comment.createdAt
-                        ).toLocaleString()}`}
-                    </div>
+          {!loadingComments &&
+              decisionComments.length === 0 && (
+                  <div className="admin-empty">
+                    No comments on this decision.
                   </div>
+              )}
 
-                  <button
-                    className="admin-comment-delete-btn"
-                    onClick={(event) => {
-                      event.stopPropagation();
+          {!loadingComments &&
+              decisionComments.length > 0 && (
+                  <div className="admin-comments-list">
+                    {decisionComments.map((comment) => (
+                        <div
+                            className="admin-comment-row"
+                            key={comment.id}
+                        >
+                          <div className="admin-comment-content">
+                            <div className="admin-comment-body">
+                              {comment.content}
+                            </div>
 
-                      deleteComment(
-                        decision.id,
-                        comment.id
-                      );
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-      </div>
+                            <div className="admin-comment-meta">
+                              {comment.userName || "Unknown user"}
+
+                              {comment.createdAt &&
+                                  ` · ${new Date(
+                                      comment.createdAt
+                                  ).toLocaleString()}`}
+                            </div>
+                          </div>
+
+                          <button
+                              className="admin-comment-delete-btn"
+                              onClick={(event) => {
+                                event.stopPropagation();
+
+                                askDeleteComment(
+                                    decision.id,
+                                    comment.id
+                                );
+                              }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                    ))}
+                  </div>
+              )}
+        </div>
     );
   };
 
   return (
-    <DashboardLayout
-      pageTitle="Manage Decisions"
-      pageSubtitle="View, search, and remove decisions across the platform."
-    >
-      <Toast message={message} isError={isError} />
+      <DashboardLayout
+          pageTitle="Manage Decisions"
+          pageSubtitle="View, search, and remove decisions across the platform."
+      >
+        <Toast message={message} isError={isError} />
+        <ConfirmDialog
+            open={confirmDialog.open}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText="Delete"
+            cancelText="Cancel"
+            onCancel={closeConfirmDialog}
+            onConfirm={() => {
+              const action = confirmDialog.onConfirm;
+              closeConfirmDialog();
+              if (action) action();
+            }}
+        />
 
-      <style>{`
+        <style>{`
         /* =====================================================
            FUTURISTIC ADMIN DECISIONS UI
         ===================================================== */
@@ -1525,138 +1562,138 @@ function AdminDecisions() {
 
       `}</style>
 
-      <div className={`admin-decisions-page ${theme === "light" ? "theme-light" : ""}`}>
+        <div className={`admin-decisions-page ${theme === "light" ? "theme-light" : ""}`}>
 
-        <div className="admin-page-hero">
-          <div className="admin-hero-content">
-            <div className="admin-eyebrow">
-              <span className="admin-eyebrow-dot" />
-              Platform control center
-            </div>
-
-            <h1 className="admin-page-title">Manage Decisions</h1>
-
-            <p className="admin-page-description">
-              Review community decisions, explore voting activity, and keep
-              discussions clean and organized.
-            </p>
-
-            <div className="admin-stat-grid">
-              <div className="admin-stat-card">
-                <span className="admin-stat-label">Total decisions</span>
-                <span className="admin-stat-value">{decisions.length}</span>
+          <div className="admin-page-hero">
+            <div className="admin-hero-content">
+              <div className="admin-eyebrow">
+                <span className="admin-eyebrow-dot" />
+                Platform control center
               </div>
 
-              <div className="admin-stat-card">
-                <span className="admin-stat-label">Total votes</span>
-                <span className="admin-stat-value">
+              <h1 className="admin-page-title">Manage Decisions</h1>
+
+              <p className="admin-page-description">
+                Review community decisions, explore voting activity, and keep
+                discussions clean and organized.
+              </p>
+
+              <div className="admin-stat-grid">
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">Total decisions</span>
+                  <span className="admin-stat-value">{decisions.length}</span>
+                </div>
+
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">Total votes</span>
+                  <span className="admin-stat-value">
                   {decisions.reduce(
-                    (sum, decision) => sum + (Number(decision.totalVotes) || 0),
-                    0
+                      (sum, decision) => sum + (Number(decision.totalVotes) || 0),
+                      0
                   )}
                 </span>
-              </div>
+                </div>
 
-              <div className="admin-stat-card">
-                <span className="admin-stat-label">Showing</span>
-                <span className="admin-stat-value">
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">Showing</span>
+                  <span className="admin-stat-value">
                   {filteredDecisions.length}
                 </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <Link
-          className="admin-back-link"
-          to="/admin"
-        >
-          ← Back to Admin Dashboard
-        </Link>
+          <Link
+              className="admin-back-link"
+              to="/admin"
+          >
+            ← Back to Admin Dashboard
+          </Link>
 
-        {/* SEARCH / FILTER TOOLBAR */}
-        <div className="admin-toolbar">
-          <div className="admin-search-wrapper">
-            <span className="admin-search-icon">⌕</span>
-            <input
-              className="admin-search"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search by title, category, or creator..."
-              aria-label="Search decisions"
-            />
-          </div>
-
-          <div className="admin-results-count">
-            <strong>{filteredDecisions.length}</strong>{" "}
-            {filteredDecisions.length === 1 ? "decision" : "decisions"}
-          </div>
-        </div>
-
-        {/* LOADING */}
-        {loading && (
-          <div className="admin-empty">
-            Loading decisions…
-          </div>
-        )}
-
-        {/* NO RESULTS */}
-        {!loading &&
-          filteredDecisions.length === 0 && (
-            <div className="admin-empty">
-              No decisions found.
+          {/* SEARCH / FILTER TOOLBAR */}
+          <div className="admin-toolbar">
+            <div className="admin-search-wrapper">
+              <span className="admin-search-icon">⌕</span>
+              <input
+                  className="admin-search"
+                  value={search}
+                  onChange={(event) =>
+                      setSearch(event.target.value)
+                  }
+                  placeholder="Search by title, category, or creator..."
+                  aria-label="Search decisions"
+              />
             </div>
+
+            <div className="admin-results-count">
+              <strong>{filteredDecisions.length}</strong>{" "}
+              {filteredDecisions.length === 1 ? "decision" : "decisions"}
+            </div>
+          </div>
+
+          {/* LOADING */}
+          {loading && (
+              <div className="admin-empty">
+                Loading decisions…
+              </div>
           )}
 
-        {/* =====================================================
+          {/* NO RESULTS */}
+          {!loading &&
+              filteredDecisions.length === 0 && (
+                  <div className="admin-empty">
+                    No decisions found.
+                  </div>
+              )}
+
+          {/* =====================================================
             DESKTOP / TABLET TABLE
         ===================================================== */}
 
-        {!loading &&
-          filteredDecisions.length > 0 && (
-            <div className="admin-table-wrapper">
-              <table className="admin-decisions-table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Created By</th>
-                    <th>Votes</th>
-                    <th></th>
-                  </tr>
-                </thead>
+          {!loading &&
+              filteredDecisions.length > 0 && (
+                  <div className="admin-table-wrapper">
+                    <table className="admin-decisions-table">
+                      <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Created By</th>
+                        <th>Votes</th>
+                        <th></th>
+                      </tr>
+                      </thead>
 
-                <tbody>
-                  {filteredDecisions.map((decision) => {
-                    const isExpanded =
-                      expandedId === decision.id;
+                      <tbody>
+                      {filteredDecisions.map((decision) => {
+                        const isExpanded =
+                            expandedId === decision.id;
 
-                    return (
-                      <>
-                        <tr
-                          key={`row-${decision.id}`}
-                          className="admin-decision-row"
-                          onClick={() =>
-                            toggleExpand(decision.id)
-                          }
-                        >
-                          <td>
-                            <div>{decision.title}</div>
-                          </td>
+                        return (
+                            <>
+                              <tr
+                                  key={`row-${decision.id}`}
+                                  className="admin-decision-row"
+                                  onClick={() =>
+                                      toggleExpand(decision.id)
+                                  }
+                              >
+                                <td>
+                                  <div>{decision.title}</div>
+                                </td>
 
-                          <td>
+                                <td>
                             <span className="admin-badge">
                               {decision.category ||
-                                "Uncategorized"}
+                                  "Uncategorized"}
                             </span>
-                          </td>
+                                </td>
 
-                          <td>
-                            {decision.createdByName || "—"}
-                          </td>
+                                <td>
+                                  {decision.createdByName || "—"}
+                                </td>
 
-                          <td>
+                                <td>
                             <span className="admin-votes">
                               <span className="admin-votes-number">
                                 {decision.totalVotes || 0}
@@ -1665,138 +1702,138 @@ function AdminDecisions() {
                                 {Number(decision.totalVotes) === 1 ? "vote" : "votes"}
                               </span>
                             </span>
-                          </td>
+                                </td>
 
-                          <td>
-                            <button
-                              className="admin-delete-btn"
-                              onClick={(event) => {
-                                event.stopPropagation();
+                                <td>
+                                  <button
+                                      className="admin-delete-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
 
-                                deleteDecision(
-                                  decision.id,
-                                  decision.title
-                                );
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
+                                        askDeleteDecision(
+                                            decision.id,
+                                            decision.title
+                                        );
+                                      }}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
 
-                        {isExpanded && (
-                          <tr
-                            key={`details-${decision.id}`}
-                            className="admin-options-panel"
-                          >
-                            <td colSpan={5}>
-                              <DecisionDetails
-                                decision={decision}
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                              {isExpanded && (
+                                  <tr
+                                      key={`details-${decision.id}`}
+                                      className="admin-options-panel"
+                                  >
+                                    <td colSpan={5}>
+                                      <DecisionDetails
+                                          decision={decision}
+                                      />
+                                    </td>
+                                  </tr>
+                              )}
+                            </>
+                        );
+                      })}
+                      </tbody>
+                    </table>
+                  </div>
+              )}
 
-        {/* =====================================================
+          {/* =====================================================
             MOBILE CARDS
         ===================================================== */}
 
-        {!loading &&
-          filteredDecisions.length > 0 && (
-            <div className="admin-mobile-decisions">
-              {filteredDecisions.map((decision) => {
-                const isExpanded =
-                  expandedId === decision.id;
+          {!loading &&
+              filteredDecisions.length > 0 && (
+                  <div className="admin-mobile-decisions">
+                    {filteredDecisions.map((decision) => {
+                      const isExpanded =
+                          expandedId === decision.id;
 
-                return (
-                  <div
-                    className="admin-decision-card"
-                    key={decision.id}
-                  >
-                    {/* CARD MAIN */}
-                    <div
-                      className="admin-decision-card-main"
-                      onClick={() =>
-                        toggleExpand(decision.id)
-                      }
-                    >
-                      <div className="admin-decision-card-header">
-                        <div className="admin-decision-title">
-                          {decision.title}
-                        </div>
+                      return (
+                          <div
+                              className="admin-decision-card"
+                              key={decision.id}
+                          >
+                            {/* CARD MAIN */}
+                            <div
+                                className="admin-decision-card-main"
+                                onClick={() =>
+                                    toggleExpand(decision.id)
+                                }
+                            >
+                              <div className="admin-decision-card-header">
+                                <div className="admin-decision-title">
+                                  {decision.title}
+                                </div>
 
-                        <div className="admin-expand-icon">
-                          {isExpanded ? "−" : "+"}
-                        </div>
-                      </div>
+                                <div className="admin-expand-icon">
+                                  {isExpanded ? "−" : "+"}
+                                </div>
+                              </div>
 
-                      <div className="admin-decision-card-category">
+                              <div className="admin-decision-card-category">
                         <span className="admin-badge">
                           {decision.category ||
-                            "Uncategorized"}
+                              "Uncategorized"}
                         </span>
-                      </div>
+                              </div>
 
-                      <div className="admin-decision-card-info">
-                        <div className="admin-info-item">
+                              <div className="admin-decision-card-info">
+                                <div className="admin-info-item">
                           <span className="admin-info-label">
                             Created By
                           </span>
 
-                          <span className="admin-info-value">
+                                  <span className="admin-info-value">
                             {decision.createdByName ||
-                              "—"}
+                                "—"}
                           </span>
-                        </div>
+                                </div>
 
-                        <div className="admin-info-item">
+                                <div className="admin-info-item">
                           <span className="admin-info-label">
                             Votes
                           </span>
 
-                          <span className="admin-info-value">
+                                  <span className="admin-info-value">
                             {decision.totalVotes}
                           </span>
-                        </div>
-                      </div>
+                                </div>
+                              </div>
 
-                      <button
-                        className="admin-delete-btn admin-mobile-delete"
-                        onClick={(event) => {
-                          event.stopPropagation();
+                              <button
+                                  className="admin-delete-btn admin-mobile-delete"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
 
-                          deleteDecision(
-                            decision.id,
-                            decision.title
-                          );
-                        }}
-                      >
-                        Delete Decision
-                      </button>
-                    </div>
+                                    askDeleteDecision(
+                                        decision.id,
+                                        decision.title
+                                    );
+                                  }}
+                              >
+                                Delete Decision
+                              </button>
+                            </div>
 
-                    {/* MOBILE EXPANDED DETAILS */}
-                    {isExpanded && (
-                      <div className="admin-mobile-details">
-                        <DecisionDetails
-                          decision={decision}
-                        />
-                      </div>
-                    )}
+                            {/* MOBILE EXPANDED DETAILS */}
+                            {isExpanded && (
+                                <div className="admin-mobile-details">
+                                  <DecisionDetails
+                                      decision={decision}
+                                  />
+                                </div>
+                            )}
+                          </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          )}
-      </div>
-    </DashboardLayout>
+              )}
+        </div>
+      </DashboardLayout>
   );
 }
 

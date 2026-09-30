@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import Toast from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 // ==========================================
 // WINNER / RESULT CALCULATION
@@ -11,96 +12,102 @@ import Toast from "../components/Toast";
 // top vote count are all marked as winners.
 // ==========================================
 function getWinnerInfo(options) {
-  const list = options || [];
-  const totalVotes = list.reduce((sum, o) => sum + (o.voteCount || 0), 0);
+    const list = options || [];
+    const totalVotes = list.reduce((sum, o) => sum + (o.voteCount || 0), 0);
 
-  if (list.length === 0 || totalVotes === 0) {
-    return { winnerIds: new Set(), winners: [], isTie: false, maxVotes: 0, totalVotes: 0 };
-  }
+    if (list.length === 0 || totalVotes === 0) {
+        return { winnerIds: new Set(), winners: [], isTie: false, maxVotes: 0, totalVotes: 0 };
+    }
 
-  const maxVotes = Math.max(...list.map((o) => o.voteCount || 0));
-  const winners = list.filter((o) => (o.voteCount || 0) === maxVotes);
+    const maxVotes = Math.max(...list.map((o) => o.voteCount || 0));
+    const winners = list.filter((o) => (o.voteCount || 0) === maxVotes);
 
-  return {
-    winnerIds: new Set(winners.map((o) => o.id)),
-    winners,
-    isTie: winners.length > 1,
-    maxVotes,
-    totalVotes,
-  };
+    return {
+        winnerIds: new Set(winners.map((o) => o.id)),
+        winners,
+        isTie: winners.length > 1,
+        maxVotes,
+        totalVotes,
+    };
 }
 
 // ==========================================
 // RESULTS REPORT
 // ==========================================
 function buildReportData(decision) {
-  const { winners, isTie, totalVotes } = getWinnerInfo(decision.options);
+    const { winners, isTie, totalVotes } = getWinnerInfo(decision.options);
 
-  return {
-    title: decision.title,
-    description: decision.description,
-    category: decision.category || "Uncategorized",
-    community: decision.communityName || "N/A",
-    status: decision.status === "COMPLETED" ? "Closed" : "Open",
-    deadline: decision.deadline || "No deadline set",
-    generatedAt: new Date().toLocaleString(),
-    totalVotes,
-    isTie,
-    options: (decision.options || []).map((o) => ({
-      text: o.optionText,
-      votes: o.voteCount || 0,
-      percent: totalVotes > 0 ? Math.round(((o.voteCount || 0) / totalVotes) * 100) : 0,
-    })),
-    winnerText:
-      totalVotes === 0
-        ? "No votes yet"
-        : isTie
-        ? `Tie between: ${winners.map((w) => w.optionText).join(" & ")}`
-        : `${winners[0].optionText} — ${winners[0].voteCount} votes (${Math.round(
-            (winners[0].voteCount / totalVotes) * 100
-          )}%)`,
-  };
+    return {
+        title: decision.title,
+        description: decision.description,
+        category: decision.category || "Uncategorized",
+        community: decision.communityName || "N/A",
+        status: decision.status === "COMPLETED" ? "Closed" : "Open",
+        deadline: decision.deadline || "No deadline set",
+        generatedAt: new Date().toLocaleString(),
+        totalVotes,
+        isTie,
+        options: (decision.options || []).map((o) => ({
+            text: o.optionText,
+            votes: o.voteCount || 0,
+            percent: totalVotes > 0 ? Math.round(((o.voteCount || 0) / totalVotes) * 100) : 0,
+        })),
+        winnerText:
+            totalVotes === 0
+                ? "No votes yet"
+                : isTie
+                    ? `Tie between: ${winners.map((w) => w.optionText).join(" & ")}`
+                    : `${winners[0].optionText} — ${winners[0].voteCount} votes (${Math.round(
+                        (winners[0].voteCount / totalVotes) * 100
+                    )}%)`,
+    };
 }
 
 function downloadCSV(decision) {
-  const report = buildReportData(decision);
+    const report = buildReportData(decision);
 
-  const rows = [
-    ["Decision Results Report"],
-    ["Title", report.title],
-    ["Description", report.description],
-    ["Category", report.category],
-    ["Community", report.community],
-    ["Status", report.status],
-    ["Deadline", report.deadline],
-    ["Generated At", report.generatedAt],
-    ["Total Votes", report.totalVotes],
-    ["Result", report.winnerText],
-    [],
-    ["Option", "Votes", "Percentage"],
-    ...report.options.map((o) => [o.text, o.votes, `${o.percent}%`]),
-  ];
+    const rows = [
+        ["Decision Results Report"],
+        ["Title", report.title],
+        ["Description", report.description],
+        ["Category", report.category],
+        ["Community", report.community],
+        ["Status", report.status],
+        ["Deadline", report.deadline],
+        ["Generated At", report.generatedAt],
+        ["Total Votes", report.totalVotes],
+        ["Result", report.winnerText],
+        [],
+        ["Option", "Votes", "Percentage"],
+        ...report.options.map((o) => [o.text, o.votes, `${o.percent}%`]),
+    ];
 
-  const csvContent = rows
-    .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+    const csvContent = rows
+        .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+        .join("\n");
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${report.title.replace(/[^a-z0-9]/gi, "_")}_report.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${report.title.replace(/[^a-z0-9]/gi, "_")}_report.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 function MyDecisions() {
-        const [decisions, setDecisions] = useState([]);
+    const [decisions, setDecisions] = useState([]);
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(true);
     const [isError, setIsError] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: "",
+        message: "",
+        onConfirm: null,
+    });
     const [reportDecision, setReportDecision] = useState(null);
     const [revealedResults, setRevealedResults] = useState({});
 
@@ -201,16 +208,6 @@ function MyDecisions() {
     ========================= */
 
     const deleteDecision = async (id) => {
-
-        if (
-            !window.confirm(
-                "Delete this decision?"
-            )
-        ) {
-            return;
-        }
-
-
         try {
 
             const token =
@@ -310,6 +307,25 @@ function MyDecisions() {
     };
 
 
+    const askDeleteDecision = (id) => {
+        setConfirmDialog({
+            open: true,
+            title: "Delete Decision",
+            message: "Are you sure you want to delete this decision?",
+            onConfirm: () => deleteDecision(id),
+        });
+    };
+
+    const closeConfirmDialog = () => {
+        setConfirmDialog({
+            open: false,
+            title: "",
+            message: "",
+            onConfirm: null,
+        });
+    };
+
+
     return (
 
         <DashboardLayout
@@ -320,6 +336,20 @@ function MyDecisions() {
             <Toast
                 message={message}
                 isError={isError}
+            />
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmText="Delete"
+                cancelText="Cancel"
+                onCancel={closeConfirmDialog}
+                onConfirm={() => {
+                    const action = confirmDialog.onConfirm;
+                    closeConfirmDialog();
+                    if (action) action();
+                }}
             />
 
 
@@ -1753,22 +1783,22 @@ function MyDecisions() {
                                         <div className="decision-card-header">
                                             <div className="decision-card-top">
                                             <span className={`status-badge ${
-                                             decision.status === "COMPLETED"
-                                               ? "status-completed"
-                                              : "status-active"
-                                        }`}>
+                                                decision.status === "COMPLETED"
+                                                    ? "status-completed"
+                                                    : "status-active"
+                                            }`}>
                                                  <span className="status-dot"></span>
-                                                  {decision.status === "COMPLETED" ? "Completed" : "Active"}
+                                                {decision.status === "COMPLETED" ? "Completed" : "Active"}
                                                 </span>
-                                               
-                <button
-    type="button"
-    className="decision-menu-btn"
-    aria-label="Decision menu"
->
-    ⋮
-</button>
-                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    className="decision-menu-btn"
+                                                    aria-label="Decision menu"
+                                                >
+                                                    ⋮
+                                                </button>
+                                            </div>
 
                                             <h2>
                                                 {decision.title}
@@ -1882,7 +1912,7 @@ function MyDecisions() {
                                                 >
 
                                                                                                         {decision.description ||
-                                                        "No description provided."}
+                                                                                                            "No description provided."}
 
                                                 </span>
 
@@ -1912,10 +1942,10 @@ function MyDecisions() {
                                                                     totalVotes === 0
                                                                         ? "result-banner-empty"
                                                                         : isTie
-                                                                        ? "result-banner-tie"
-                                                                        : decision.status === "COMPLETED"
-                                                                        ? "result-banner-final"
-                                                                        : "result-banner-leading"
+                                                                            ? "result-banner-tie"
+                                                                            : decision.status === "COMPLETED"
+                                                                                ? "result-banner-final"
+                                                                                : "result-banner-leading"
                                                                 }`}
                                                             >
                                                                 {totalVotes === 0 && "🗳️ No votes yet"}
@@ -1989,7 +2019,7 @@ function MyDecisions() {
                                                 <button
                                                     className="btn-delete"
                                                     onClick={() =>
-                                                        deleteDecision(
+                                                        askDeleteDecision(
                                                             decision.id
                                                         )
                                                     }
@@ -2017,7 +2047,7 @@ function MyDecisions() {
 
                 {/* MESSAGE */}
 
-                                {message && (
+                {message && (
 
                     <div className="info-message">
 
@@ -2062,9 +2092,9 @@ function MyDecisions() {
                                 <table className="report-table">
                                     <thead><tr><th>Option</th><th>Votes</th><th>Share</th></tr></thead>
                                     <tbody>
-                                        {report.options.map((o) => (
-                                            <tr key={o.text}><td>{o.text}</td><td>{o.votes}</td><td>{o.percent}%</td></tr>
-                                        ))}
+                                    {report.options.map((o) => (
+                                        <tr key={o.text}><td>{o.text}</td><td>{o.votes}</td><td>{o.percent}%</td></tr>
+                                    ))}
                                     </tbody>
                                 </table>
                             </div>

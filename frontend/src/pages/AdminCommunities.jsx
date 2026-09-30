@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import { useTheme } from "../context/ThemeContext";
 import Toast from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const API = "http://localhost:8080";
 
@@ -14,6 +15,12 @@ function AdminCommunities() {
   const [expandedId, setExpandedId] = useState(null);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
 
   const headers = () => ({
     Authorization: `Bearer ${sessionStorage.getItem("token")}`,
@@ -58,33 +65,27 @@ function AdminCommunities() {
   };
 
   const deleteCommunity = async (id, name) => {
-    const confirmed = window.confirm(
-      `Delete "${name}"? This will also remove its decisions and polls.`
-    );
-
-    if (!confirmed) return;
-
     try {
       const response = await fetch(
-        `${API}/api/admin/communities/${id}`,
-        {
-          method: "DELETE",
-          headers: headers(),
-        }
+          `${API}/api/admin/communities/${id}`,
+          {
+            method: "DELETE",
+            headers: headers(),
+          }
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Unable to delete community."
+            data.message || "Unable to delete community."
         );
       }
 
       notify("Community deleted.");
 
       setCommunities((current) =>
-        current.filter((c) => c.id !== id)
+          current.filter((c) => c.id !== id)
       );
 
       if (expandedId === id) {
@@ -95,9 +96,27 @@ function AdminCommunities() {
     }
   };
 
+  const askDeleteCommunity = (id, name) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Community",
+      message: `Delete "${name}"? This will also remove its decisions and polls.`,
+      onConfirm: () => deleteCommunity(id, name),
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      title: "",
+      message: "",
+      onConfirm: null,
+    });
+  };
+
   const toggleCommunity = (id) => {
     setExpandedId((current) =>
-      current === id ? null : id
+        current === id ? null : id
     );
   };
 
@@ -107,8 +126,8 @@ function AdminCommunities() {
     if (!term) return true;
 
     return (
-      c.communityName?.toLowerCase().includes(term) ||
-      c.ownerName?.toLowerCase().includes(term)
+        c.communityName?.toLowerCase().includes(term) ||
+        c.ownerName?.toLowerCase().includes(term)
     );
   });
 
@@ -119,39 +138,52 @@ function AdminCommunities() {
   const MembersList = ({ community }) => {
     if (community.memberNames?.length) {
       return (
-        <div className="admin-members-content">
-          <div className="admin-members-title">
-            Community members
-          </div>
-          <div className="admin-members-list">
-          {community.memberNames.map((name, index) => (
-            <span
-              className="admin-member-chip"
-              key={`${name}-${index}`}
-            >
+          <div className="admin-members-content">
+            <div className="admin-members-title">
+              Community members
+            </div>
+            <div className="admin-members-list">
+              {community.memberNames.map((name, index) => (
+                  <span
+                      className="admin-member-chip"
+                      key={`${name}-${index}`}
+                  >
               {name}
             </span>
-          ))}
+              ))}
+            </div>
           </div>
-        </div>
       );
     }
 
     return (
-      <div className="admin-empty">
-        No members yet.
-      </div>
+        <div className="admin-empty">
+          No members yet.
+        </div>
     );
   };
 
   return (
-    <DashboardLayout
-      pageTitle="Manage Communities"
-      pageSubtitle="View members, moderate, and remove communities."
-    >
-      <Toast message={message} isError={isError} />
+      <DashboardLayout
+          pageTitle="Manage Communities"
+          pageSubtitle="View members, moderate, and remove communities."
+      >
+        <Toast message={message} isError={isError} />
+        <ConfirmDialog
+            open={confirmDialog.open}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText="Delete"
+            cancelText="Cancel"
+            onCancel={closeConfirmDialog}
+            onConfirm={() => {
+              const action = confirmDialog.onConfirm;
+              closeConfirmDialog();
+              if (action) action();
+            }}
+        />
 
-      <style>{`
+        <style>{`
         .admin-communities-page {
           width: 100%;
           max-width: 1180px;
@@ -1106,291 +1138,291 @@ function AdminCommunities() {
 
       `}</style>
 
-      <div className={`admin-communities-page ${theme === "light" ? "theme-light" : ""}`}>
+        <div className={`admin-communities-page ${theme === "light" ? "theme-light" : ""}`}>
 
-        <div className="admin-community-hero">
-          <div className="admin-community-hero-content">
-            <div className="admin-community-eyebrow">
-              <span className="admin-community-eyebrow-dot" />
-              Community control center
-            </div>
+          <div className="admin-community-hero">
+            <div className="admin-community-hero-content">
+              <div className="admin-community-eyebrow">
+                <span className="admin-community-eyebrow-dot" />
+                Community control center
+              </div>
 
-            <h1 className="admin-community-page-title">
-              Manage Communities
-            </h1>
+              <h1 className="admin-community-page-title">
+                Manage Communities
+              </h1>
 
-            <p className="admin-community-page-description">
-              Review community ownership, member activity, and keep your
-              platform organized with a cleaner moderation workspace.
-            </p>
+              <p className="admin-community-page-description">
+                Review community ownership, member activity, and keep your
+                platform organized with a cleaner moderation workspace.
+              </p>
 
-            <div className="admin-community-stat-grid">
-              <div className="admin-community-stat-card">
+              <div className="admin-community-stat-grid">
+                <div className="admin-community-stat-card">
                 <span className="admin-community-stat-label">
                   Total communities
                 </span>
-                <span className="admin-community-stat-value">
+                  <span className="admin-community-stat-value">
                   {communities.length}
                 </span>
-              </div>
+                </div>
 
-              <div className="admin-community-stat-card">
+                <div className="admin-community-stat-card">
                 <span className="admin-community-stat-label">
                   Total members
                 </span>
-                <span className="admin-community-stat-value">
+                  <span className="admin-community-stat-value">
                   {communities.reduce(
-                    (sum, community) =>
-                      sum + (Number(community.memberCount) || 0),
-                    0
+                      (sum, community) =>
+                          sum + (Number(community.memberCount) || 0),
+                      0
                   )}
                 </span>
-              </div>
+                </div>
 
-              <div className="admin-community-stat-card">
+                <div className="admin-community-stat-card">
                 <span className="admin-community-stat-label">
                   Showing
                 </span>
-                <span className="admin-community-stat-value">
+                  <span className="admin-community-stat-value">
                   {filteredCommunities.length}
                 </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        {/* BACK */}
-        <Link
-          className="admin-back-link"
-          to="/admin"
-        >
-          ← Back to Admin Dashboard
-        </Link>
+          {/* BACK */}
+          <Link
+              className="admin-back-link"
+              to="/admin"
+          >
+            ← Back to Admin Dashboard
+          </Link>
 
-        {/* SEARCH / FILTER TOOLBAR */}
-        <div className="admin-community-toolbar">
-          <div className="admin-search-wrapper">
-            <span className="admin-search-icon">⌕</span>
-            <input
-              className="admin-search"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search by community name or owner..."
-              aria-label="Search communities"
-            />
-          </div>
-
-          <div className="admin-results-count">
-            <strong>{filteredCommunities.length}</strong>{" "}
-            {filteredCommunities.length === 1 ? "community" : "communities"}
-          </div>
-        </div>
-
-        {/* LOADING */}
-        {loading && (
-          <div className="admin-empty">
-            Loading communities…
-          </div>
-        )}
-
-        {/* NO RESULTS */}
-        {!loading &&
-          filteredCommunities.length === 0 && (
-            <div className="admin-empty">
-              No communities found.
+          {/* SEARCH / FILTER TOOLBAR */}
+          <div className="admin-community-toolbar">
+            <div className="admin-search-wrapper">
+              <span className="admin-search-icon">⌕</span>
+              <input
+                  className="admin-search"
+                  value={search}
+                  onChange={(event) =>
+                      setSearch(event.target.value)
+                  }
+                  placeholder="Search by community name or owner..."
+                  aria-label="Search communities"
+              />
             </div>
+
+            <div className="admin-results-count">
+              <strong>{filteredCommunities.length}</strong>{" "}
+              {filteredCommunities.length === 1 ? "community" : "communities"}
+            </div>
+          </div>
+
+          {/* LOADING */}
+          {loading && (
+              <div className="admin-empty">
+                Loading communities…
+              </div>
           )}
 
-        {/* =====================================================
+          {/* NO RESULTS */}
+          {!loading &&
+              filteredCommunities.length === 0 && (
+                  <div className="admin-empty">
+                    No communities found.
+                  </div>
+              )}
+
+          {/* =====================================================
             DESKTOP / TABLET TABLE
         ===================================================== */}
 
-        {!loading &&
-          filteredCommunities.length > 0 && (
-            <div className="admin-table-wrapper">
-              <table className="admin-communities-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Owner</th>
-                    <th>Members</th>
-                    <th></th>
-                  </tr>
-                </thead>
+          {!loading &&
+              filteredCommunities.length > 0 && (
+                  <div className="admin-table-wrapper">
+                    <table className="admin-communities-table">
+                      <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Members</th>
+                        <th></th>
+                      </tr>
+                      </thead>
 
-                <tbody>
-                  {filteredCommunities.map((community) => {
-                    const isExpanded =
-                      expandedId === community.id;
+                      <tbody>
+                      {filteredCommunities.map((community) => {
+                        const isExpanded =
+                            expandedId === community.id;
 
-                    return (
-                      <>
-                        <tr
-                          key={`row-${community.id}`}
-                          className="admin-community-row"
-                          onClick={() =>
-                            toggleCommunity(community.id)
-                          }
-                        >
-                          <td>
-                            <div className="admin-community-name-cell">
+                        return (
+                            <>
+                              <tr
+                                  key={`row-${community.id}`}
+                                  className="admin-community-row"
+                                  onClick={() =>
+                                      toggleCommunity(community.id)
+                                  }
+                              >
+                                <td>
+                                  <div className="admin-community-name-cell">
                               <span className="admin-community-avatar">
                                 {(community.communityName || "C").trim().charAt(0).toUpperCase()}
                               </span>
-                              <span className="admin-community-name-text">
+                                    <span className="admin-community-name-text">
                                 {community.communityName}
                               </span>
-                            </div>
-                          </td>
+                                  </div>
+                                </td>
 
-                          <td>
+                                <td>
                             <span className="admin-owner-cell">
                               {community.ownerName || "—"}
                             </span>
-                          </td>
+                                </td>
 
-                          <td>
+                                <td>
                             <span className="admin-member-count">
                               {community.memberCount || 0}{" "}
                               {Number(community.memberCount) === 1 ? "member" : "members"}
                             </span>
-                          </td>
+                                </td>
 
-                          <td>
-                            <button
-                              className="admin-delete-btn"
-                              onClick={(event) => {
-                                event.stopPropagation();
+                                <td>
+                                  <button
+                                      className="admin-delete-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
 
-                                deleteCommunity(
-                                  community.id,
-                                  community.communityName
-                                );
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
+                                        askDeleteCommunity(
+                                            community.id,
+                                            community.communityName
+                                        );
+                                      }}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
 
-                        {isExpanded && (
-                          <tr
-                            key={`members-${community.id}`}
-                            className="admin-members-panel"
-                          >
-                            <td colSpan={4}>
-                              <MembersList
-                                community={community}
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                              {isExpanded && (
+                                  <tr
+                                      key={`members-${community.id}`}
+                                      className="admin-members-panel"
+                                  >
+                                    <td colSpan={4}>
+                                      <MembersList
+                                          community={community}
+                                      />
+                                    </td>
+                                  </tr>
+                              )}
+                            </>
+                        );
+                      })}
+                      </tbody>
+                    </table>
+                  </div>
+              )}
 
-        {/* =====================================================
+          {/* =====================================================
             MOBILE COMMUNITY CARDS
         ===================================================== */}
 
-        {!loading &&
-          filteredCommunities.length > 0 && (
-            <div className="admin-mobile-communities">
-              {filteredCommunities.map((community) => {
-                const isExpanded =
-                  expandedId === community.id;
+          {!loading &&
+              filteredCommunities.length > 0 && (
+                  <div className="admin-mobile-communities">
+                    {filteredCommunities.map((community) => {
+                      const isExpanded =
+                          expandedId === community.id;
 
-                return (
-                  <div
-                    className="admin-community-card"
-                    key={community.id}
-                  >
-                    {/* CARD MAIN */}
-                    <div
-                      className="admin-community-card-main"
-                      onClick={() =>
-                        toggleCommunity(community.id)
-                      }
-                    >
-                      <div className="admin-community-card-header">
-                        <div className="admin-community-card-name">
+                      return (
+                          <div
+                              className="admin-community-card"
+                              key={community.id}
+                          >
+                            {/* CARD MAIN */}
+                            <div
+                                className="admin-community-card-main"
+                                onClick={() =>
+                                    toggleCommunity(community.id)
+                                }
+                            >
+                              <div className="admin-community-card-header">
+                                <div className="admin-community-card-name">
                           <span className="admin-community-avatar">
                             {(community.communityName || "C").trim().charAt(0).toUpperCase()}
                           </span>
-                          <div className="admin-community-card-name-text">
-                            {community.communityName}
-                          </div>
-                        </div>
+                                  <div className="admin-community-card-name-text">
+                                    {community.communityName}
+                                  </div>
+                                </div>
 
-                        <div className="admin-expand-icon">
-                          {isExpanded ? "−" : "+"}
-                        </div>
-                      </div>
+                                <div className="admin-expand-icon">
+                                  {isExpanded ? "−" : "+"}
+                                </div>
+                              </div>
 
-                      <div className="admin-community-info">
-                        <div className="admin-info-item">
+                              <div className="admin-community-info">
+                                <div className="admin-info-item">
                           <span className="admin-info-label">
                             Owner
                           </span>
 
-                          <span className="admin-info-value">
+                                  <span className="admin-info-value">
                             {community.ownerName || "—"}
                           </span>
-                        </div>
+                                </div>
 
-                        <div className="admin-info-item">
+                                <div className="admin-info-item">
                           <span className="admin-info-label">
                             Members
                           </span>
 
-                          <span className="admin-info-value">
+                                  <span className="admin-info-value">
                             <span className="admin-member-count">
                               {community.memberCount || 0}{" "}
                               {Number(community.memberCount) === 1 ? "member" : "members"}
                             </span>
                           </span>
-                        </div>
-                      </div>
+                                </div>
+                              </div>
 
-                      <button
-                        className="admin-delete-btn admin-mobile-delete"
-                        onClick={(event) => {
-                          event.stopPropagation();
+                              <button
+                                  className="admin-delete-btn admin-mobile-delete"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
 
-                          deleteCommunity(
-                            community.id,
-                            community.communityName
-                          );
-                        }}
-                      >
-                        Delete Community
-                      </button>
-                    </div>
+                                    askDeleteCommunity(
+                                        community.id,
+                                        community.communityName
+                                    );
+                                  }}
+                              >
+                                Delete Community
+                              </button>
+                            </div>
 
-                    {/* MOBILE MEMBERS */}
-                    {isExpanded && (
-                      <div className="admin-mobile-members">
-                        <div className="admin-mobile-members-title">
-                          Members
-                        </div>
+                            {/* MOBILE MEMBERS */}
+                            {isExpanded && (
+                                <div className="admin-mobile-members">
+                                  <div className="admin-mobile-members-title">
+                                    Members
+                                  </div>
 
-                        <MembersList
-                          community={community}
-                        />
-                      </div>
-                    )}
+                                  <MembersList
+                                      community={community}
+                                  />
+                                </div>
+                            )}
+                          </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          )}
-      </div>
-    </DashboardLayout>
+              )}
+        </div>
+      </DashboardLayout>
   );
 }
 

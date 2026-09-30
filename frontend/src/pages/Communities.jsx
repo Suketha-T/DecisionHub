@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import Toast from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const API = "http://localhost:8080";
 
@@ -22,6 +23,13 @@ function Communities() {
 
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Confirm",
+    onConfirm: null,
+  });
 
   const headers = () => ({
     Authorization:
@@ -153,10 +161,23 @@ function Communities() {
   ========================= */
 
   const membership = async (community) => {
+    if (community.joined) {
+      setConfirmDialog({
+        open: true,
+        title: "Leave Community",
+        message: `Are you sure you want to leave "${community.communityName}"?`,
+        confirmText: "Leave",
+        onConfirm: () => performMembershipAction(community, "leave"),
+      });
+      return;
+    }
+
+    await performMembershipAction(community, "join");
+  };
+
+
+  const performMembershipAction = async (community, action) => {
     try {
-      const action = community.joined
-          ? "leave"
-          : "join";
 
       const response = await fetch(
           API +
@@ -227,14 +248,6 @@ function Communities() {
   ========================= */
 
   const deleteCommunity = async (community) => {
-    if (
-        !window.confirm(
-            `Delete ${community.communityName}?`
-        )
-    ) {
-      return;
-    }
-
     try {
       const response = await fetch(
           `${API}/api/communities/${community.id}`,
@@ -286,6 +299,27 @@ function Communities() {
   };
 
 
+  const askDeleteCommunity = (community) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Community",
+      message: `Delete "${community.communityName}"? This cannot be undone.`,
+      confirmText: "Delete",
+      onConfirm: () => deleteCommunity(community),
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      title: "",
+      message: "",
+      confirmText: "Confirm",
+      onConfirm: null,
+    });
+  };
+
+
   return (
       <DashboardLayout
           pageTitle="Communities"
@@ -295,6 +329,20 @@ function Communities() {
         <Toast
             message={message}
             isError={isError}
+        />
+
+        <ConfirmDialog
+            open={confirmDialog.open}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText={confirmDialog.confirmText}
+            cancelText="Cancel"
+            onCancel={closeConfirmDialog}
+            onConfirm={() => {
+              const action = confirmDialog.onConfirm;
+              closeConfirmDialog();
+              if (action) action();
+            }}
         />
 
 
@@ -1706,7 +1754,7 @@ function Communities() {
                                           type="button"
                                           className="leave-community"
                                           onClick={() =>
-                                              deleteCommunity(
+                                              askDeleteCommunity(
                                                   community
                                               )
                                           }

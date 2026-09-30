@@ -496,16 +496,18 @@ const Profile = () => {
     0;
 
   const votesCast =
-    profile?.votesCast ??
-    profile?.voteCount ??
-    profile?.totalVotes ??
-    0;
+      profile?.votesParticipated ??
+      profile?.votesCast ??
+      profile?.voteCount ??
+      profile?.totalVotes ??
+      0;
 
   const communitiesJoined =
-    profile?.communitiesJoined ??
-    profile?.communityCount ??
-    profile?.totalCommunities ??
-    0;
+      profile?.joinedCommunities ??
+      profile?.communitiesJoined ??
+      profile?.communityCount ??
+      profile?.totalCommunities ??
+      0;
 
   return (
     <DashboardLayout>
